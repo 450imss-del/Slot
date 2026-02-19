@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slot Promoción</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:linear-gradient(135deg,#000,#1a1a1a);
+    color:white;
+    text-align:center;
+}
+
+h1{
+    margin-top:20px;
+    color:gold;
+}
+
+input{
+    padding:10px;
+    border-radius:8px;
+    border:none;
+    margin:10px;
+    width:200px;
+}
+
+button{
+    padding:10px 20px;
+    border:none;
+    border-radius:8px;
+    background:gold;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.slot-container{
+    display:flex;
+    justify-content:center;
+    margin:30px 0;
+}
+
+.reel{
+    width:80px;
+    height:80px;
+    background:#111;
+    border:3px solid gold;
+    margin:0 10px;
+    font-size:40px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+}
+
+.premio-dinamico{
+    margin-top:20px;
+    font-size:22px;
+    color:#00ff99;
+    font-weight:bold;
+}
+
+.reglas{
+    margin-top:30px;
+    font-size:14px;
+    color:#ccc;
+    padding:20px;
+}
+</style>
+</head>
+<body>
+
+<h1>🎰 SLOT PROMOCIÓN</h1>
+<p>Gana increíbles premios desde perfiles hasta cuentas completas</p>
+<p>Compra tu código por WhatsApp 5647385519</p>
+
+<input type="text" id="codigo" placeholder="Ingresa tu código">
+<br>
+<button onclick="girar()">GIRAR</button>
+
+<div class="slot-container">
+    <div class="reel" id="r1">❓</div>
+    <div class="reel" id="r2">❓</div>
+    <div class="reel" id="r3">❓</div>
+</div>
+
+<div class="premio-dinamico" id="premioTexto">
+Premio actual: Perfil Netflix
+</div>
+
+<div id="resultado"></div>
+
+<div class="reglas">
+<b>REGLAS DEL JUEGO</b><br><br>
+• Cada código cuesta $10 y equivale a un giro.<br>
+• El código solo puede usarse una vez.<br>
+• Si obtienes 3 figuras iguales ganas el premio.<br>
+• Toma captura y envíala por WhatsApp.<br>
+</div>
+
+<script>
+const simbolos = ["💎","💰","👑","🍀","⭐"];
+let probabilidad = localStorage.getItem("probabilidad") || 0.05;
+let premiosRestantes = localStorage.getItem("premios") || 0;
+let premioNombre = localStorage.getItem("premioNombre") || "Perfil Netflix";
+
+document.getElementById("premioTexto").innerText =
+"Premio actual: " + premioNombre;
+
+function girar(){
+
+    let codigo = document.getElementById("codigo").value;
+
+    if(!codigo){
+        alert("Ingresa un código válido");
+        return;
+    }
+
+    let usados = JSON.parse(localStorage.getItem("usados") || "[]");
+
+    if(usados.includes(codigo)){
+        alert("Código ya usado");
+        return;
+    }
+
+    usados.push(codigo);
+    localStorage.setItem("usados", JSON.stringify(usados));
+
+    let reels = ["r1","r2","r3"];
+    let intervalos = [];
+
+    reels.forEach(id=>{
+        intervalos.push(setInterval(()=>{
+            document.getElementById(id).innerText =
+            simbolos[Math.floor(Math.random()*simbolos.length)];
+        },100));
+    });
+
+    setTimeout(()=>{
+        intervalos.forEach(i=>clearInterval(i));
+
+        let gana = false;
+
+        if(premiosRestantes > 0 && Math.random() < probabilidad){
+            gana = true;
+        }
+
+        if(gana){
+            let simboloGanador =
+            simbolos[Math.floor(Math.random()*simbolos.length)];
+
+            reels.forEach(id=>{
+                document.getElementById(id).innerText = simboloGanador;
+            });
+
+            premiosRestantes--;
+            localStorage.setItem("premios", premiosRestantes);
+
+            document.getElementById("resultado").innerHTML =
+            "<h2 style='color:lime'>¡GANASTE!</h2>";
+
+        }else{
+            document.getElementById("resultado").innerHTML =
+            "<h2 style='color:red'>Suerte para la próxima</h2>";
+        }
+
+    },2000);
+}
+</script>
+
+</body>
+</html>
