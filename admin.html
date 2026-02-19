@@ -3,92 +3,161 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel Administrador</title>
+<title>Admin Slot Promoción</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
-    font-family:Arial;
+    font-family:Arial, sans-serif;
     background:#111;
     color:white;
+    text-align:center;
     padding:20px;
 }
-
-input{
-    padding:8px;
-    margin:10px 0;
-    width:200px;
+h1{
+    color:gold;
 }
-
-button{
+input, button{
     padding:8px 15px;
     margin:5px;
+    border-radius:6px;
+    border:none;
+    font-size:14px;
+}
+button{
+    background:gold;
+    font-weight:bold;
     cursor:pointer;
 }
-
-.ticket{
+table{
+    width:90%;
+    margin:20px auto;
+    border-collapse:collapse;
+}
+th, td{
+    border:1px solid #444;
+    padding:8px;
+}
+th{
     background:#222;
-    padding:10px;
-    margin-top:10px;
+}
+tr:nth-child(even){
+    background:#1a1a1a;
 }
 </style>
 </head>
 <body>
 
-<h2>Panel Administrador 🎰</h2>
+<h1>Admin Slot Promoción</h1>
 
-<label>Cantidad de premios:</label><br>
-<input type="number" id="premios"><br>
+<div>
+    <h3>Configuración del juego</h3>
+    <input type="text" id="premio" placeholder="Nombre del premio">
+    <input type="number" id="premios" placeholder="Premios restantes" min="0">
+    <input type="number" id="probabilidad" placeholder="Probabilidad (0 a 1)" step="0.01" min="0" max="1">
+    <button onclick="guardarConfig()">Guardar</button>
+</div>
 
-<label>Probabilidad (ej: 0.05 = 5%):</label><br>
-<input type="number" step="0.01" id="probabilidad"><br>
+<div>
+    <h3>Generar nuevo código</h3>
+    <button onclick="generarCodigo()">Generar código</button>
+    <p id="codigoGenerado"></p>
+</div>
 
-<label>Premio editable:</label><br>
-<input type="text" id="premioNombre"><br>
-
-<button onclick="guardar()">Guardar Configuración</button>
-
-<hr>
-
-<h3>Generador de Ticket</h3>
-<button onclick="generarTicket()">Generar Código</button>
-
-<div id="tickets"></div>
+<div>
+    <h3>Lista de códigos</h3>
+    <table id="tablaCodigos">
+        <tr>
+            <th>Código</th>
+            <th>Usado</th>
+            <th>Ganador</th>
+            <th>Fecha de uso</th>
+        </tr>
+    </table>
+</div>
 
 <script>
+const supabase = window.supabase.createClient(
+  "https://zxzvjnqdvjhnsinewvnf.supabase.co",
+  "sb_publishable_G9xXGpb4U44145uw3CMAxw_82DgA9RF"
+);
 
-function guardar(){
-    localStorage.setItem("premios",
-        document.getElementById("premios").value);
+// Cargar configuración inicial
+async function cargarConfig(){
+  let { data } = await supabase
+  .from("config")
+  .select("*")
+  .eq("id",1)
+  .single();
 
-    localStorage.setItem("probabilidad",
-        document.getElementById("probabilidad").value);
+  if(data){
+    document.getElementById("premio").value = data.premio_nombre;
+    document.getElementById("premios").value = data.premios_restantes;
+    document.getElementById("probabilidad").value = data.probabilidad;
+  }
+}
+cargarConfig();
 
-    localStorage.setItem("premioNombre",
-        document.getElementById("premioNombre").value);
+// Guardar configuración
+async function guardarConfig(){
+  let premio = document.getElementById("premio").value;
+  let premios = Number(document.getElementById("premios").value);
+  let probabilidad = Number(document.getElementById("probabilidad").value);
 
-    alert("Configuración guardada");
+  await supabase.from("config")
+  .update({
+    premio_nombre: premio,
+    premios_restantes: premios,
+    probabilidad: probabilidad
+  })
+  .eq("id",1);
+
+  alert("Configuración guardada ✅");
 }
 
-function generarTicket(){
+// Generar código único: YYYYMMDDXXXX
+async function generarCodigo(){
+  let fecha = new Date();
+  let codigo = fecha.getFullYear().toString()+
+               (fecha.getMonth()+1).toString().padStart(2,'0')+
+               fecha.getDate().toString().padStart(2,'0')+
+               Math.floor(1000 + Math.random()*9000);
 
-    let fecha = new Date();
-    let fechaTexto =
-    fecha.getFullYear() +
-    (fecha.getMonth()+1).toString().padStart(2,'0') +
-    fecha.getDate().toString().padStart(2,'0');
+  await supabase.from("codigos")
+  .insert([{ codigo: codigo, usado: false, ganador:false }]);
 
-    let random =
-    Math.floor(1000 + Math.random()*9000);
-
-    let codigo = fechaTexto + random;
-
-    let div = document.createElement("div");
-    div.className = "ticket";
-    div.innerText = "Código: " + codigo;
-
-    document.getElementById("tickets").appendChild(div);
+  document.getElementById("codigoGenerado").innerText = "Código generado: " + codigo;
+  cargarCodigos();
 }
 
+// Cargar lista de códigos
+async function cargarCodigos(){
+  let { data } = await supabase
+  .from("codigos")
+  .select("*")
+  .order("fecha_uso",{ascending:false});
+
+  let tabla = document.getElementById("tablaCodigos");
+  tabla.innerHTML = `
+  <tr>
+    <th>Código</th>
+    <th>Usado</th>
+    <th>Ganador</th>
+    <th>Fecha de uso</th>
+  </tr>
+  `;
+
+  data.forEach(c=>{
+    let fila = tabla.insertRow();
+    fila.insertCell(0).innerText = c.codigo;
+    fila.insertCell(1).innerText = c.usado ? "Sí" : "No";
+    fila.insertCell(2).innerText = c.ganador ? "Sí" : "No";
+    fila.insertCell(3).innerText = c.fecha_uso ? new Date(c.fecha_uso).toLocaleString() : "-";
+  });
+}
+
+cargarCodigos();
 </script>
 
 </body>
