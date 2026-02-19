@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slot Promoción</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:linear-gradient(135deg,#000,#1a1a1a);
+    color:white;
+    text-align:center;
+}
+
+h1{
+    margin-top:20px;
+    color:gold;
+}
+
+input{
+    padding:10px;
+    border-radius:8px;
+    border:none;
+    margin:10px;
+    width:220px;
+    text-align:center;
+    font-size:16px;
+}
+
+button{
+    padding:10px 25px;
+    border:none;
+    border-radius:8px;
+    background:gold;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:16px;
+}
+
+.slot-container{
+    display:flex;
+    justify-content:center;
+    margin:30px 0;
+}
+
+.reel{
+    width:90px;
+    height:90px;
+    background:#111;
+    border:3px solid gold;
+    margin:0 10px;
+    font-size:45px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:12px;
+}
+
+.premio-texto{
+    margin-top:15px;
+    font-size:20px;
+    color:#00ff99;
+    font-weight:bold;
+}
+
+.resultado{
+    margin-top:20px;
+    font-size:22px;
+    font-weight:bold;
+}
+
+.reglas{
+    margin-top:30px;
+    font-size:14px;
+    color:#ccc;
+    padding:20px;
+}
+</style>
+</head>
+<body>
+
+<h1>🎰 SLOT PROMOCIÓN</h1>
+<p>Gana increíbles premios desde perfiles hasta cuentas completas</p>
+<p>Compra tu código por WhatsApp 5647385519</p>
+
+<input type="text" id="codigo" placeholder="Ingresa tu código">
+<br>
+<button onclick="girar()">GIRAR</button>
+
+<div class="slot-container">
+    <div class="reel" id="r1">❓</div>
+    <div class="reel" id="r2">❓</div>
+    <div class="reel" id="r3">❓</div>
+</div>
+
+<div class="premio-texto" id="premioTexto">
+Cargando premio...
+</div>
+
+<div class="resultado" id="resultado"></div>
+
+<div class="reglas">
+<b>REGLAS DEL JUEGO</b><br><br>
+• Cada código equivale a un giro.<br>
+• El código solo puede usarse una vez.<br>
+• Si obtienes 3 figuras iguales ganas el premio.<br>
+• Toma captura y envíala por WhatsApp.<br>
+</div>
+
+<script>
+const supabase = window.supabase.createClient(
+  "https://zxzvjnqdvjhnsinewvnf.supabase.co",
+  "TU_PUBLISHABLE_KEY"
+);
+
+const simbolos = ["💎","💰","👑","🍀","⭐"];
+
+cargarPremio();
+
+async function cargarPremio(){
+  let { data } = await supabase
+  .from("config")
+  .select("*")
+  .eq("id",1)
+  .single();
+
+  if(data){
+    document.getElementById("premioTexto").innerText =
+    "Premio actual: " + data.premio_nombre;
+  }
+}
+
+async function girar(){
+
+  let codigo = document.getElementById("codigo").value.trim();
+
+  if(!codigo){
+    alert("Ingresa un código válido");
+    return;
+  }
+
+  let { data:codigoData } = await supabase
+  .from("codigos")
+  .select("*")
+  .eq("codigo",codigo)
+  .single();
+
+  if(!codigoData){
+    alert("Código inválido");
+    return;
+  }
+
+  if(codigoData.usado){
+    alert("Código ya usado");
+    return;
+  }
+
+  let { data:config } = await supabase
+  .from("config")
+  .select("*")
+  .eq("id",1)
+  .single();
+
+  let reels = ["r1","r2","r3"];
+  let intervalos = [];
+
+  reels.forEach(id=>{
+    intervalos.push(setInterval(()=>{
+      document.getElementById(id).innerText =
+      simbolos[Math.floor(Math.random()*simbolos.length)];
+    },100));
+  });
+
+  setTimeout(async ()=>{
+
+    intervalos.forEach(i=>clearInterval(i));
+
+    let gana = false;
+
+    if(config.premios_restantes > 0 &&
+       Math.random() < config.probabilidad){
+       gana = true;
+    }
+
+    if(gana){
+
+      let simboloGanador =
+      simbolos[Math.floor(Math.random()*simbolos.length)];
+
+      reels.forEach(id=>{
+        document.getElementById(id).innerText =
+        simboloGanador;
+      });
+
+      await supabase.from("codigos")
+      .update({
+        usado:true,
+        ganador:true,
+        fecha_uso:new Date()
+      })
+      .eq("codigo",codigo);
+
+      await supabase.from("config")
+      .update({
+        premios_restantes:
+        config.premios_restantes - 1
+      })
+      .eq("id",1);
+
+      document.getElementById("resultado")
+      .innerHTML = "<span style='color:lime'>¡GANASTE!</span>";
+
+    }else{
+
+      await supabase.from("codigos")
+      .update({
+        usado:true,
+        fecha_uso:new Date()
+      })
+      .eq("codigo",codigo);
+
+      document.getElementById("resultado")
+      .innerHTML =
+      "<span style='color:red'>Suerte para la próxima</span>";
+    }
+
+  },2000);
+}
+</script>
+
+</body>
+</html>
